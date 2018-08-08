@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- 引入 ECharts 文件 -->
+    <script src="js/echarts.js" type="text/javascript"></script>
+    <script src="js/jquery-1.11.1.min.js" type="text/javascript"></script>
+    <div id="echar" style="width:1000px;height:600px"></div>
+    <script type="text/javascript">
+     
+  	    var tianjin = "json/tianjin.json";
+	  $(function() {
+		 var myChart = echarts.init(document.getElementById('echar'));
+		 $.get(tianjin, function(tjJson) {
+		    echarts.registerMap('tianjin', tjJson);
+		    myChart.setOption({
+		        series: [{
+		            type: 'map',
+		            map: 'tianjin'
+		        }]
+		    });
+		
+		 var geoCoordMap = {
+		    '蓟县': [117.7831, 40.0204],
+		
+		    '宁河': [117.908, 39.4004],
+		
+		    '东丽': [117.3065, 39.0887]
+		
+		};
+       //出发方向的数据集合
+		var goData = [
+		    [{
+		        name: '蓟县'
+		    }, {
+		        id: 1,
+		        name: '宁河',
+		        value: 75
+		    }],
+		    [{
+		        name: '蓟县'
+		    }, {
+		        id: 1,
+		        name: '东丽',
+		        value: 5
+		    }]
+		
+		     // [{name:'蓟县'}, {name:'宁河',value:95}],
+		];
+		//回程路线的数据集合
+		var backData = [
+		    [{
+		        name: '宁河'
+		    }, {
+		        id: 2,
+		        name: '蓟县',
+		        value: 75
+		    }],
+		    [{
+		        name: '东丽'
+		    }, {
+		        id: 2,
+		        name: '蓟县',
+		        value: 5
+		    }]
+		];
+		var planePath = 'path://M1705.06,1318.313v-89.254l-319.9-221.799l0.073-208.063c0.521-84.662-26.629-121.796-63.961-121.491c-37.332-0.305-64.482,36.829-63.961,121.491l0.073,208.063l-319.9,221.799v89.254l330.343-157.288l12.238,241.308l-134.449,92.931l0.531,42.034l175.125-42.917l175.125,42.917l0.531-42.034l-134.449-92.931l12.238-241.308L1705.06,1318.313z';
+		var arcAngle = function(data) {
+		    var j, k;
+		    for (var i = 0; i < data.length; i++) {
+		        var dataItem = data[i];
+		        if (dataItem[1].id == 1) {
+		            j = 0.2;
+		            return j;
+		        } else if (dataItem[1].id == 2) {
+		            k = -0.2;
+		            return k;
+		        }
+		    }
+		}
+		//整合数据集合
+		var convertData = function(data) {
+		    var res = [];
+		    for (var i = 0; i < data.length; i++) {
+		        var dataItem = data[i];
+		        var fromCoord = geoCoordMap[dataItem[0].name];
+		        var toCoord = geoCoordMap[dataItem[1].name];
+		        if (dataItem[1].id == 1) {
+		            if (fromCoord && toCoord) {
+		                res.push([{
+		                    coord: fromCoord,
+		                }, {
+		                    coord: toCoord,
+		                    value: dataItem[1].value 
+		
+		                }]);
+		            }
+		        } else if (dataItem[1].id == 2) {
+		            if (fromCoord && toCoord) {
+		                res.push([{
+		                    coord: fromCoord,
+		                }, {
+		                    coord: toCoord
+		                }]);
+		            }
+		        }
+		    }
+		    return res;
+		};
+		
+		var color = ['#fff', '#FF1493', '#0000FF'];
+		var series = [];
+		[
+		    ['1', goData],
+		    ['2', backData]
+		].forEach(function(item, i) {
+		    series.push({
+		        name: item[0],
+		        type: 'lines',
+		        zlevel: 2,
+		        //线特效配置
+		        effect: {
+		            show: true,   //是否显示特效
+		            period: 6,      //特效动画的时间，单位为 s。
+		            trailLength: 0.1, //特效尾迹的长度。取从 0 到 1 的值，数值越大尾迹越长。
+		            symbol: planePath, //特效图形的标记。标记类型
+		            symbolSize: 10       //特效标记的大小，可以设置成诸如 10 这样单一的数字，也可以用数组分开表示高和宽，例如 [20, 10] 表示标记宽为20，高为10
+		        },
+		        lineStyle: {      
+		            normal: {
+		                width: 1,    //线宽 
+		                opacity: 0.4,  // 图形透明度。支持从 0 到 1 的数字，为 0 时不绘制该图形
+		                curveness: arcAngle(item[1]), //弧线角度
+		                color: '#fff'    //线的颜色。 默认从option.color 调色盘 获取颜色
+		            }
+		        },
+		        data: convertData(item[1]) //绑定到构建完成的数据集合
+		    }, {
+		        type: 'effectScatter',    //构建有波纹的散点
+		        coordinateSystem: 'geo',  //该系列使用的坐标系
+		        zlevel: 2,         //线图所有图形的 zlevel 值。[ default: 0 ]zlevel 大的 Canvas 会放在 zlevel 小的 Canvas 的上面
+		        //波纹涟漪特效相关配置
+		        rippleEffect: {    
+		            period: 2,    //[ default: 4 ]动画的时间。
+		            brushType: 'stroke', //[ default: 'fill' ]波纹的绘制方式，可选 'stroke' 和 'fill'
+		            scale: 3      //[ default: 2.5 ]动画中波纹的最大缩放比例。
+		        }, 
+		        label: {         
+		            normal: {
+		                show: true,
+		                color: '#fff',
+		                position: 'right',
+		                formatter: '{b}'
+		            }
+		        },
+		        //终点形象
+		        symbol: 'circle',  //[ default: 'circle' ]  标记的图形  Charts 提供的标记类型包括 'circle', 'rect', 'roundRect', 'triangle', 'diamond', 'pin', 'arrow'
+		        //圆点大小
+		        symbolSize: function(val) { //标记的大小，可以设置成诸如 10 这样单一的数字，也可以用数组分开表示宽和高，例如 [20, 10] 表示标记宽为20，高为10
+		            return val[2] / 8;
+		        },
+		        itemStyle: {    //图形样式
+		            normal: {
+		                show: true
+		            }
+		        },
+		        data: item[1].map(function(dataItem) {
+		            return {
+		                name: dataItem[1].name,
+		                value: geoCoordMap[dataItem[1].name].concat([dataItem[1].value])
+		            };
+		        })
+		
+		    });
+		
+		});
+		
+		option = {
+		    backgroundColor: '#404a59',
+		    title: {
+		        text: '天津迁徙',
+		        subtext: '工作地-居住地',
+		        left: 'center',
+		        textStyle: {
+		            color: '#fff'
+		        }
+		    },
+		    tooltip: {    //构建提示框显示内容
+		        trigger: 'item',
+		        formatter: "{b}"
+		    },
+		    //迁徙线及
+		    visualMap: {
+		        show: false,
+		        min: 0,
+		        max: 100,
+		        color: ['#fff', '#0000ff', '#000000']
+		    },
+		    //地图相关设置
+		    geo: {
+		        map: 'tianjin',
+		        //视角缩放比例
+		        zoom: 1,
+		        //显示文本样式
+		        label: {
+		            normal: {
+		                show: false,
+		                textStyle: {
+		                    color: '#fff'
+		                }
+		            },
+		            emphasis: {
+		                textStyle: {
+		                    color: '#fff'
+		                }
+		            }
+		        },
+		        //鼠标缩放和平移
+		        roam: true, 
+		        itemStyle: {      //地块颜色样式
+		            normal: { 
+		                borderColor: 'rgba(147, 235, 248, 1)',
+		                borderWidth: 1,
+		                areaColor: {
+		                    type: 'radial',
+		                    x: 0.5,
+		                    y: 0.5,
+		                    r: 0.8,
+		                    colorStops: [{
+		                        offset: 0,
+		                        color: 'rgba(175,238,238, 0)' // 0% 处的颜色
+		                    }, {
+		                        offset: 1,
+		                        color: 'rgba(	47,79,79, .2)' // 100% 处的颜色
+		                    }],
+		                    globalCoord: false // 缺省为 false
+		                },
+		                shadowColor: 'rgba(128, 217, 248, 1)',
+		                shadowOffsetX: -2,
+		                shadowOffsetY: 2,
+		                shadowBlur: 10
+		            },
+		            emphasis: {      
+		                areaColor: '#389BB7',
+		                borderWidth: 0
+		            }
+		        }
+		    },
+		    series: series
+		};
+		 myChart.setOption(option);
+		})
+		});
+
+    </script>
+</head>
+</html>
